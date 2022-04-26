@@ -1,21 +1,20 @@
-# FastAPI CRUD (Create, Read, Update and Delete.)
+# FastAPI Lessons
 
-## Users
-| Funcionalidade | Método (HTTP)   | Caminho  |
-| :---:   | :-: | :-: |
-| Criar um usuário | POST | /users
-| Ler um usuário da lista | GET | /users/{id}
-| Ler todos os usuários |	GET | /users
-| Atualizar um item | PUT | /users/{id}
-| Deleta um item | DELETE | /users/{id}
+## Install FastAPI
 
+### Create virtual environment:
+```sh
+python -m venv myenv
+```
 
+### Install requirements:
+```sh
+.\myenv\Scripts\activate
+pip install -r requirements.txt
+```
 
-## Items
-| Funcionalidade | Método (HTTP)   | Caminho  |
-| :---:   | :-: | :-: |
-| Criar um item atrelado a um usuário | POST | /users/{user_id}/items
-| Ler um item da lista | GET | /items/{id}
-| Ler todos os itens |	GET | /items
-| Atualizar um item | PUT | /items/{id}
-| Deleta um item | DELETE | /items/{id}
+## Run API
+### Enter in lesson folder, then run API:
+```sh
+uvicorn main:app --reload
+```
