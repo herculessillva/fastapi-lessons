@@ -44,6 +44,10 @@ tags_metadata = [
         "name": "Items",
         "description": "Manage items. So _fancy_ they have their own docs.",
     },
+    {
+        "name": "Auth",
+        "description": "Authenticate user.",
+    },
 ]
 
 app = FastAPI(title="API - Prog. Avançada",
@@ -93,9 +97,20 @@ async def get_current_active_user(current_user: schemas.User = Depends(get_curre
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-@app.post("/token", response_model=schemas.Token)
+@app.post("/login", response_model=schemas.Token, tags=["Auth"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     return crud.access_token(db, username=form_data.username, password=form_data.password)
+
+@app.post("/refresh-token", response_model=schemas.Token, tags=["Auth"])
+def refresh_token(request: schemas.TokenItem, dbs: Session = Depends(get_db)):
+
+    refresh_token = request.refresh_token
+
+    token_user = crud.get_access_from_refresh_token(dbs, refresh_token = refresh_token)
+
+    login_token = crud.create_login_token(user = token_user, refresh_token = refresh_token)
+
+    return login_token
 
 # Users methods
 @app.post("/users/", response_model=schemas.User, tags=["Users"])
@@ -117,7 +132,6 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     db_user = crud.get_user(db, user_id=user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    print(db_user)
     return db_user
 
 @app.put("/users/{id}", tags=["Users"])

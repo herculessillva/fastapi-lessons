@@ -12,6 +12,7 @@ from typing import Optional
 SECRET_KEY = "17ff87d2d54043a933c9cf8fd8f221010a956d16a3e8f4bf902ea66ebc76d62f"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 10
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -126,8 +127,54 @@ def access_token(db: Session, username: str, password: str):
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    userdata = {
+        'id': user.id,
+        'email': user.email,
+        'is_active': user.is_active,
+        'created_at': user.created_at
+    }
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    refreshdata = {'token_type': 'refresh', 'id': user.id}
+    refresh_token = create_access_token(
+        refreshdata, expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": userdata
+    }
+
+def create_login_token(user: models.User, refresh_token: str):
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    userdata = {
+        'id': user.id,
+        'email': user.email,
+        'is_active': user.is_active,
+        'created_at': user.created_at
+    }
+
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": userdata
+    }
+
+def get_access_from_refresh_token(db: Session, refresh_token: str):
+    payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    token_data = schemas.TokenPayload(**payload)
+    token_user = get_user(db, token_data.id)
+
+    return token_user

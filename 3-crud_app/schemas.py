@@ -46,6 +46,16 @@ class User(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    refresh_token: str
+    user: User
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class TokenItem(BaseModel):
+    refresh_token: str
+
+class TokenPayload(BaseModel):
+    token_type: Optional[str] = None
+    id: Optional[int] = None
+    exp: Optional[int] = None
