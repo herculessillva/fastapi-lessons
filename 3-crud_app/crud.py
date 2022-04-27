@@ -1,15 +1,25 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
+from passlib.context import CryptContext
 import models, schemas
 
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt
+from typing import Optional
+
+SECRET_KEY = "17ff87d2d54043a933c9cf8fd8f221010a956d16a3e8f4bf902ea66ebc76d62f"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Users functions
 ## C: Create users
 def create_user(db: Session, user: schemas.UserCreate):
-    fake_hashed_password = user.password + "notreallyhashed"
-    db_user = models.User(email=user.email, hashed_password=fake_hashed_password, created_at=datetime.now())
+    hashed_password = pwd_context.hash(user.password)
+    db_user = models.User(email=user.email, hashed_password=hashed_password, created_at=datetime.now())
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -85,3 +95,39 @@ def delete_item(db: Session, item_id: int):
         db.commit()
         db.refresh(db_item)
     return db_item
+
+# Auth functions
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def authenticate_user(db, username: str, password: str):
+    user = get_user_by_email(db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def access_token(db: Session, username: str, password: str):
+    user = authenticate_user(db, username, password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
